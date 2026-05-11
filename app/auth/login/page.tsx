@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
@@ -8,9 +8,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
-  const supabase = createClient();
 
   const handleLogin = async () => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) setError(error.message);
     else router.push('/dashboard');
@@ -20,9 +23,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <a href="/" className="text-3xl font-black bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">
-            ✦ MyBlog
-          </a>
+          <a href="/" className="text-3xl font-black text-violet-400">MyBlog</a>
           <h2 className="text-white text-2xl font-bold mt-4">Welcome back!</h2>
           <p className="text-gray-400 mt-2">Login to your account</p>
         </div>
@@ -58,16 +59,16 @@ export default function LoginPage() {
             Login
           </button>
           <p className="text-center text-gray-400 mt-4 text-sm">
-  <a href="/auth/forgot-password" className="text-violet-400 hover:text-violet-300 font-semibold">
-    Forgot password?
-  </a>
-</p>
-<p className="text-center text-gray-400 mt-3 text-sm">
-  No account?{' '}
-  <a href="/auth/signup" className="text-violet-400 hover:text-violet-300 font-semibold">
-    Sign up
-  </a>
-</p>
+            <a href="/auth/forgot-password" className="text-violet-400 hover:text-violet-300 font-semibold">
+              Forgot password?
+            </a>
+          </p>
+          <p className="text-center text-gray-400 mt-3 text-sm">
+            No account?{' '}
+            <a href="/auth/signup" className="text-violet-400 hover:text-violet-300 font-semibold">
+              Sign up
+            </a>
+          </p>
         </div>
       </div>
     </div>
