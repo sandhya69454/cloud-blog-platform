@@ -1,4 +1,4 @@
-import { createClient } from './supabase/server';
+import { createClient } from '@/lib/supabase/server';
 
 function toSlug(title: string) {
   return title.toLowerCase()
@@ -7,7 +7,7 @@ function toSlug(title: string) {
 }
 
 export async function getPosts() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from('posts')
     .select('id, title, slug, tags, created_at, profiles(display_name)')
@@ -17,7 +17,7 @@ export async function getPosts() {
 }
 
 export async function getPost(slug: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from('posts')
     .select('*, profiles(display_name)')
@@ -30,7 +30,7 @@ export async function getPost(slug: string) {
 export async function createPost(
   title: string, markdown: string, tags: string[], published = false
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
   return supabase.from('posts').insert({
