@@ -1,94 +1,77 @@
-'use client';
-import { useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
-import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+import DeletePost from '@/app/components/DeletePost';
 
-export default function NewPostPage() {
-  const [title, setTitle] = useState('');
-  const [markdown, setMarkdown] = useState('');
-  const [tags, setTags] = useState('');
-  const [published, setPublished] = useState(false);
-  const [error, setError] = useState('');
-  const router = useRouter();
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const handleSubmit = async () => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return router.push('/auth/login');
-    const slug = title.toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-    const { error } = await supabase.from('posts').insert({
-      title, slug, markdown,
-      tags: tags.split(',').map(t => t.trim()),
-      published, author: user.id
-    });
-    if (error) setError(error.message);
-    else router.push('/dashboard');
-  };
+  if (!user) redirect('/auth/login');
+
+  const { data: posts } = await supabase
+    .from('posts')
+    .select('id, title, slug, published, created_at')
+    .eq('author', user.id)
+    .order('created_at', { ascending: false });
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <nav className="fixed top-0 w-full z-50 bg-gray-950/80 backdrop-blur-md border-b border-gray-800 px-8 py-4 flex justify-between items-center">
         <a href="/" className="text-2xl font-black text-violet-400">MyBlog</a>
-        <a href="/dashboard" className="text-gray-400 hover:text-white text-sm">Back to Dashboard</a>
+        <div className="flex gap-4 items-center">
+          <a href="/blog" className="text-gray-400 hover:text-white text-sm">Blog</a>
+          <a href="/auth/login" className="text-gray-400 hover:text-white text-sm">Logout</a>
+        </div>
       </nav>
-      <div className="pt-32 pb-24 px-8 max-w-3xl mx-auto">
-        <h1 className="text-4xl font-black mb-2">Write New Post</h1>
-        <p className="text-gray-400 mb-10">Share your story with the world</p>
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm">
-            {error}
+      <div className="pt-32 pb-24 px-8 max-w-4xl mx-auto">
+        <div className="mb-10">
+          <h1 className="text-4xl font-black mb-2">Dashboard</h1>
+          <p className="text-gray-400">Welcome back!</p>
+        </div>
+        <div className="grid grid-cols-2 gap-4 mb-12">
+          <a href="/dashboard/new"
+            className="bg-violet-600 hover:bg-violet-500 p-6 rounded-2xl text-center font-bold transition-colors">
+            Write New Post
+          </a>
+          <a href="/blog"
+            className="bg-gray-900 border border-gray-800 p-6 rounded-2xl text-center font-bold">
+            View Blog
+          </a>
+        </div>
+        <h2 className="text-2xl font-black mb-6">My Posts</h2>
+        {posts?.length === 0 && (
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center">
+            <p className="text-gray-500 mb-4">No posts yet!</p>
+            <a href="/dashboard/new" className="text-violet-400 font-semibold">
+              Write your first post
+            </a>
           </div>
         )}
-        <div className="mb-6">
-          <label className="text-gray-400 text-sm font-medium block mb-2">Post Title</label>
-          <input
-            className="w-full bg-gray-900 border border-gray-800 focus:border-violet-500 text-white p-4 rounded-xl focus:outline-none transition-colors text-lg font-semibold"
-            placeholder="Enter your post title..."
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+        <div className="grid gap-4">
+          {posts?.map((post) => (
+            <div key={post.id}
+              className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-lg mb-1">{post.title}</h3>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                    {post.published ? 'Published' : 'Draft'}
+                  </span>
+                  <span className="text-gray-500 text-xs">
+                    {new Date(post.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <a href={"/blog/" + post.slug}
+                  className="text-violet-400 text-sm px-4 py-2 border border-violet-500/30 rounded-xl hover:bg-violet-500/10 transition-colors">
+                  View
+                </a>
+                <DeletePost postId={post.id} />
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="mb-6">
-          <label className="text-gray-400 text-sm font-medium block mb-2">Content (Markdown)</label>
-          <textarea
-            className="w-full bg-gray-900 border border-gray-800 focus:border-violet-500 text-white p-4 rounded-xl focus:outline-none transition-colors h-72 resize-none font-mono text-sm"
-            placeholder="Write your post content in Markdown..."
-            value={markdown}
-            onChange={(e) => setMarkdown(e.target.value)}
-          />
-        </div>
-        <div className="mb-6">
-          <label className="text-gray-400 text-sm font-medium block mb-2">Tags</label>
-          <input
-            className="w-full bg-gray-900 border border-gray-800 focus:border-violet-500 text-white p-4 rounded-xl focus:outline-none transition-colors"
-            placeholder="tech, news, design (comma separated)"
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center gap-3 mb-8 bg-gray-900 border border-gray-800 p-4 rounded-xl">
-          <input
-            type="checkbox"
-            id="publish"
-            checked={published}
-            onChange={(e) => setPublished(e.target.checked)}
-            className="w-4 h-4 accent-violet-500"
-          />
-          <label htmlFor="publish" className="text-gray-300 font-medium cursor-pointer">
-            Publish immediately
-          </label>
-        </div>
-        <button
-          onClick={handleSubmit}
-          className="w-full bg-gradient-to-r from-violet-600 to-pink-600 hover:opacity-90 text-white p-4 rounded-xl font-bold text-lg transition-opacity"
-        >
-          Save Post
-        </button>
       </div>
     </div>
   );

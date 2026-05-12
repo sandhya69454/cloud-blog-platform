@@ -1,3 +1,4 @@
+'use clint';
 import { createClient } from '@/lib/supabase/server';
 import LogoutButton from '@/app/components/LogoutButton';
 
